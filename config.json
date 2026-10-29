@@ -1,0 +1,45 @@
+{
+  "page_name": "Iligan Light",
+  "facebook_page": "iliganlight",
+  "feeds": [
+    "http://127.0.0.1:1200/facebook/page/iliganlight"
+  ],
+  "fetch": {
+    "retries": 10,
+    "retry_wait": 6,
+    "timeout": 15
+  },
+  "fallback_scrape": false,
+  "fallback_scrape_page": "iliganlight",
+  "bootstrap_days": 3,
+  "notify": {
+    "max_popups": 3,
+    "click_wait": 120,
+    "notify_on_feed_error": false,
+    "icons": {
+      "outage": "dialog-warning"
+    }
+  },
+  "rules": {
+    "outage": [
+      "\\b(outage|brownout|black[- ]?out|interruption)\\b",
+      "\\bpower[ .,:;-]{0,3}(cut|cut[- ]?off|out|off|loss|fail|down|shut)\\b",
+      "\\bcut[- ]?off\\b",
+      "\\bno (power|electricity)\\b",
+      "\\bshut[- ]?(down|off)\\b[^.\\n]{0,40}\\b(power|line|lines|electricity)\\b",
+      "\\b(power|line|lines|electricity)\\b[^.\\n]{0,40}\\bshut[- ]?(down|off)\\b",
+      "\\bswitch[- ]?off\\b",
+      "\\bline (fault|repair|maintenance|cleared)\\b",
+      "\\bservice disruption\\b",
+      "\\b(re[- ]?energiz|de[- ]?energiz|restoration|power restor\\w+|restor\\w+ power)\\b",
+      "\\b(un\\s?scheduled|scheduled) (power |line )?(shift|switch|maintenance|work|cut|shut)\\b",
+      "\\btemporary (power |line )?(loss|out|shut|interrupt)\\b",
+      "\\bpowerless\\b"
+    ],
+    "billing": [
+      "\\b(bills?|billing|rate|rates|charge|charges|tariff|surcharge|kwh)[^.\\n]{0,80}\\b(increas\\w+|adjust\\w+|hik\\w+|higher|goes up|went up|rebalanc\\w+)\\b",
+      "\\b(increas\\w+|adjust\\w+|hik\\w+|higher|goes up|went up|rebalanc\\w+)\\b[^.\\n]{0,80}\\b(bills?|billing|rate|rates|charge|charges|tariff|surcharge|kwh)\\b",
+      "\\bnew (rate|rates|tariff)\\b"
+    ]
+  }
+}
