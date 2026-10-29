@@ -165,6 +165,29 @@ then run `systemctl --user daemon-reload`.
 
 MIT — see [LICENSE](LICENSE).
 
+## System updates & recovery
+
+Everything runs in **user space**, so it shrugs off routine system churn:
+
+| Event | Result |
+|---|---|
+| Kernel updates | No effect — no kernel modules involved. After any reboot, Docker (`enabled`), the RSSHub container (`restart=always`), the autostart entry and the 15-min timer all come back automatically. |
+| Regular package/OS updates | No effect — plain files in `$HOME` + stdlib Python. |
+| Password change, browser cookie rotation | Fine — only matters if you *log out* of Facebook (re-copy cookies, re-run the docker command). |
+| OS reinstall / wiped home directory | Everything local is gone — two-step full recovery below. |
+
+**Full recovery after wiping the disk** (works on any machine, new PC included):
+
+```bash
+git clone https://github.com/ryann-g/electric-notifier
+cd electric-notifier
+chmod +x restore.sh && ./restore.sh
+```
+
+`restore.sh` installs Docker requirements, recreates the bridge (asks for
+your cookies at runtime — nothing is stored in the repo), re-enables the
+background watcher and the autostart entry, then runs the test cycle.
+
 ## Uninstall
 
 ```bash
