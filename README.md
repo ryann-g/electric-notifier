@@ -117,36 +117,31 @@ Test any text against the rules:
 ~/electric-notifier/electric-notifier.py test-rules --text "ERC approved rate increase effective next billing period"
 ```
 
-## Want it to also watch while the PC is on? (optional)
+## Background watcher (installed on this machine)
 
-You chose boot-only. If you ever want ongoing checks every 15 minutes, create
-a systemd user timer:
+Besides the boot check, a systemd **user timer** re-checks the feed every
+15 minutes while the PC is on — 3 minutes after login (lets Docker warm up),
+then every 15 minutes. Same rules: keyword-filtered, no repeats, popups stay
+clickable. The unit files ship with this repository under `systemd/`.
 
 ```bash
+# install on a fresh machine
 mkdir -p ~/.config/systemd/user
-tee ~/.config/systemd/user/electric-notifier.service >/dev/null <<'EOF'
-[Unit]
-Description=Electric Notifier background check
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/python3 %h/electric-notifier/electric-notifier.py boot
-EOF
-tee ~/.config/systemd/user/electric-notifier.timer >/dev/null <<'EOF'
-[Unit]
-Description=Check electric provider posts every 15 min
-
-[Timer]
-OnBootSec=2min
-OnUnitActiveSec=15min
-AccuracySec=1min
-
-[Install]
-WantedBy=timers.target
-EOF
+cp ~/electric-notifier/systemd/electric-notifier.{service,timer} ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now electric-notifier.timer
+
+# management on this machine
+systemctl --user list-timers electric-notifier.timer        # when is the next check
+journalctl --user -u electric-notifier.service -f           # live log
+systemctl --user disable --now electric-notifier.timer      # turn the watcher off
+systemctl --user enable --now electric-notifier.timer       # turn it back on
 ```
+
+Change the interval (for example to 5 minutes): edit
+`~/.config/systemd/user/electric-notifier.timer`, set `OnUnitActiveSec=5min`,
+then run `systemctl --user daemon-reload`.
+
 
 ## Troubleshooting
 

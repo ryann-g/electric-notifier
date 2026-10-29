@@ -1,0 +1,7 @@
+[Unit]
+Description=Electric Notifier check (boot + periodic)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/electric-notifier/electric-notifier.py boot
+TimeoutStartSec=15min

@@ -1,0 +1,10 @@
+[Unit]
+Description=Re-check electric provider posts every 15 min while the PC is on
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=15min
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target
