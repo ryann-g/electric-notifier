@@ -24,7 +24,7 @@ import sys
 import time
 import unicodedata
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import datetime, timedelta
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from urllib.request import Request, urlopen
@@ -69,6 +69,18 @@ def save_state(state: dict) -> None:
     tmp = STATE_PATH.with_suffix(".tmp")
     tmp.write_text(json.dumps(state, indent=1), encoding="utf-8")
     tmp.replace(STATE_PATH)
+
+
+def prune_seen(state: dict, keep_days: float = 30.0) -> None:
+    """Drop seen-post entries older than keep_days so state.json stays small.
+    Timestamps are stored as YYYY-MM-DD HH:MM, so strings sort as dates."""
+    seen = state.get("seen")
+    if not isinstance(seen, dict):
+        return
+    cutoff = (datetime.now() - timedelta(days=keep_days)).strftime("%Y-%m-%d %H:%M")
+    state["seen"] = {
+        post_id: ts for post_id, ts in seen.items() if isinstance(ts, str) and ts >= cutoff
+    }
 
 
 def log_history(line: str) -> None:
@@ -426,6 +438,25 @@ def within_recent_days(post: dict, days: float) -> bool:
     return age <= days * 86400
 
 
+def is_stale_post(post: dict, recent_days: float) -> bool:
+    """True when the post has a real published date but is older than
+    recent_days. Posts without any date (fallback scrape) are never stale."""
+    return (
+        bool(post.get("published"))
+        and parse_date(post["published"]) is not None
+        and not within_recent_days(post, recent_days)
+    )
+
+
+def published_date(post: dict) -> datetime:
+    """Publication time as a naive local datetime, for newest-first sorting.
+    Posts without a date sort last."""
+    dt = parse_date(post.get("published") or "")
+    if dt is None:
+        return datetime.min
+    return dt.astimezone().replace(tzinfo=None) if dt.tzinfo else dt
+
+
 class BootLock:
     """Prevent two runs popping double notifications."""
 
@@ -468,6 +499,7 @@ def cmd_boot(cfg: dict, compiled: dict) -> int:
 
     log.info("boot: %s posts via %s", len(posts), source)
     state = load_state()
+    prune_seen(state)
     seen = state.setdefault("seen", {})
     fresh = [post for post in posts if post["id"] not in seen]
 
@@ -495,8 +527,31 @@ def cmd_boot(cfg: dict, compiled: dict) -> int:
     matches = [(post, classify(post, compiled)) for post in fresh]
     matches = [(post, cats) for post, cats in matches if cats]
 
+    # The RSS bridge sometimes drops old posts and re-serves them later, so a
+    # not-yet-seen ID alone proves nothing. Skip matched posts published before
+    # notify.recent_days — they are marked seen silently instead of popping as
+    # days-old "new" advisories. recent_days <= 0 keeps the old behaviour.
+    settings = cfg.get("notify", {}) or {}
+    recent_days = max(0.0, float(settings.get("recent_days", 2)))
+
+    if recent_days > 0:
+        stale = [pair for pair in matches if is_stale_post(pair[0], recent_days)]
+        if stale:
+            log.info(
+                "boot: skipped %s stale matched posts (older than %s days): %s",
+                len(stale),
+                recent_days,
+                "; ".join(post["title"][:50] for post, _ in stale[:4]),
+            )
+            matches = [pair for pair in matches if not is_stale_post(pair[0], recent_days)]
+
+    # Newest first, so max_popups always keeps the freshest posts.
+    matches.sort(key=lambda pair: published_date(pair[0]), reverse=True)
+
     for post, categories in matches[:limit]:
         notify_post(post, categories, cfg)
+        seen[post["id"]] = datetime.now().strftime("%Y-%m-%d %H:%M")
+        save_state(state)  # persist per popup so a shutdown mid-run never re-pops them
 
     if len(matches) > limit:
         titles = "; ".join(post["title"][:60] for post, _ in matches)

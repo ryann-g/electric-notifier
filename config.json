@@ -15,6 +15,7 @@
   "notify": {
     "max_popups": 3,
     "click_wait": 120,
+    "recent_days": 2,
     "notify_on_feed_error": false,
     "icons": {
       "outage": "dialog-warning"

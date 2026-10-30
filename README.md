@@ -14,12 +14,17 @@ alerts.
    bridge** (RSSHub, running in Docker on this PC — see "Feed setup" below).
 3. Posts are matched against keyword **rules** in `config.json`
    (categories: `outage`, `billing`).
-4. **New** matched posts raise popups — outages are `critical` urgency so they
+5. **New** matched posts raise popups — outages are `critical` urgency so they
    don't auto-dismiss; billing updates are normal urgency. **Clicking the
    popup (or its "Open post" button) opens the actual Facebook post in your
    browser.** The click stays armed for `click_wait` seconds (default 120)
    while the notifier waits; afterwards use the `open` command instead.
-5. Shown post IDs are stored in `~/.local/share/electric-notifier/state.json`
+6. "New" means published within `notify.recent_days` (default 2) **and** not
+   shown before. The RSS bridge sometimes drops old posts and re-serves them
+   later; such resurfaced posts are recorded as seen silently instead of
+   popping days-old advisories. Set `recent_days` to `0` to notify on every
+   unseen post regardless of age.
+7. Shown post IDs are stored in `~/.local/share/electric-notifier/state.json`
    so nothing ever repeats. Every popup is appended to
    `~/.local/share/electric-notifier/history.log`.
 
@@ -145,6 +150,12 @@ then run `systemctl --user daemon-reload`.
 
 ## Troubleshooting
 
+- **Old posts keep popping up** — the RSS bridge re-serves old posts after
+  dropping them from its feed, which makes already-seen IDs look new again.
+  The notifier now treats anything published older than `notify.recent_days`
+  (default 2 days) as stale: it is marked seen silently, never popped. Raise
+  that value if you want more of the "missed while away" posts to still
+  appear, or `0` for the old always-pop behaviour.
 - **No popup at boot** — the feed was probably unreachable at that moment
   (e.g. internet not up yet, RSSHub still starting). The script logs it and
   retries at the NEXT boot; missed posts are not lost (they stay "new" until
